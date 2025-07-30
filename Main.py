@@ -1,47 +1,66 @@
 import yfinance as yf
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-import datetime
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+from tkinter import messagebox
 
+# Fonction principale pour afficher le graphique
+def show_graph():
+    ticker = entry_ticker.get()
+    start = entry_start.get()
+    end = entry_end.get()
 
-# data + time asking
-ticker = input("Read the stock ticker :")
-print("Date format = YYYY-MM-DD")
-start_period = input("Choose the start date :")
-end_period = input("Choose the end data : ")
+    try:
+        stock = yf.Ticker(ticker)
+        data = stock.history(start=start, end=end)
 
-# data function
-def get_ticker_data(ticker, start_period, end_period):
-    stock = yf.Ticker(ticker)
-    data = stock.history(start=start_period, end=end_period)
-    return data
-    
-# get the data
-data = get_ticker_data(ticker, start_period, end_period)
+        if data.empty:
+            messagebox.showwarning("Avertissement", "Aucune donnée disponible.")
+            return
 
-print(data.head()) #apercu de la data
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.plot(data.index, data['Close'], label='Prix de clôture')
 
+        last_close = data['Close'].iloc[-1]
+        last_date = data.index[-1]
+        ax.text(last_date, last_close, f'{last_close:.2f}', fontsize=8, color='black')
+        ax.axhline(y=last_close, color='black', linestyle='--', linewidth=1)
 
-# print data graph from close
-plt.figure(figsize=(12, 6)) # definition de la taille (l x h)
-plt.plot(data.index, data['Close'], label='Prix de clôture')
+        ax.set_title(f"Cours de {ticker.upper()} de {start} à {end}")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Prix de clôture")
+        ax.grid(True)
+        ax.legend()
 
+        # Affichage dans Tkinter
+        canvas = FigureCanvasTkAgg(fig, master=window)
+        canvas.draw()
+        canvas.get_tk_widget().pack()
 
-# nom des axe x et y
-plt.xlabel('Date') 
-plt.ylabel('Prix de cloture') 
+    except Exception as e:
+        messagebox.showerror("Erreur", f"Une erreur est survenue : {e}")
 
-# add last price 
-last_date = data.index[-1] # selection of the last date 
-last_close = data['Close'].iloc[-1] # selection of the last close
-plt.text(last_date, last_close, f'{last_close:.2f}',
-         fontsize=8, color='black', ha='left', va='bottom')
-plt.axhline(y=last_close, color='black', linestyle='--', linewidth=1) #ajout d'une ligne prix de cloture
+# Interface utilisateur (Tkinter)
+window = tk.Tk()
+window.title("Visualiseur de Cours Boursier")
+window.geometry("600x400")
 
-# mise en forme du graphique
-plt.title(f'Cours de {ticker.upper()} de {start_period.upper()} à {end_period.upper()}') #titre du graph
-plt.grid(True)  # ajout de grillet
-plt.legend()    # affichage d'une legende
+# Zone de saisie
+tk.Label(window, text="Ticker boursier :").pack()
+entry_ticker = tk.Entry(window)
+entry_ticker.pack()
 
-# impression du graph
-plt.show()
+tk.Label(window, text="Date de début (YYYY-MM-DD) :").pack()
+entry_start = tk.Entry(window)
+entry_start.pack()
+
+tk.Label(window, text="Date de fin (YYYY-MM-DD) :").pack()
+entry_end = tk.Entry(window)
+entry_end.pack()
+
+# Bouton
+btn = tk.Button(window, text="Afficher le graphique", command=show_graph)
+btn.pack(pady=10)
+
+# Lancer l’appli
+window.mainloop()
